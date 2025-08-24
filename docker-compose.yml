@@ -1,0 +1,77 @@
+services:
+  redis:
+    image: redis:7-alpine
+    init: true
+    container_name: cleanrr-redis
+    restart: unless-stopped
+    # ports:                      # optional; only if you want to access Redis from host
+    #   - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cleanrr:
+    image: docker.io/zxoir/cleanrr:local
+    init: true
+    container_name: cleanrr-app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+
+      # --- Required ---
+      REDIS_URL: redis://redis:6379
+
+      # If these apps are in this same compose: use their service names.
+      # If they run on the HOST: see 'extra_hosts' below and use host.docker.internal.
+      OVERSEERR_API_URL: http://host.docker.internal:5055 # or http://overseerr:5055
+      OVERSEERR_API_KEY: change_me
+
+      # Optional integrations
+      RADARR_API_URL: http://host.docker.internal:7878 # or http://radarr:7878
+      RADARR_API_KEY: change_me
+      SONARR_API_URL: http://host.docker.internal:8989 # or http://sonarr:8989
+      SONARR_API_KEY: change_me
+
+      # Optional hardening / behavior
+      # OVERSEERR_WEBHOOK_SECRET: change_me_strong_secret
+      # MOVIE_DELAY_DAYS: 3
+      # SHOW_DELAY_DAYS: 5
+      # RETRY_INTERVAL_HOURS: 24
+      # DB_PATH: /app/data/app.sqlite
+      # WHATSAPP_SESSION_PATH: /app/session
+
+    volumes:
+      - cleanrr-session:/app/session
+      - cleanrr-data:/app/data
+
+    # Needed only if any *_API_URL points to services on the HOST (Linux).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  redis-data:
+  cleanrr-session:
+  cleanrr-data:

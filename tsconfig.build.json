@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "sourceMap": false,
+    "inlineSources": false,
+    "esModuleInterop": true,
+    "removeComments": true
+  },
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "src/**/*.mock.ts"]
+}
